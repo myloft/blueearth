@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
     blueearth.py
@@ -25,15 +25,17 @@
 """
 import os
 import sys
+import time
 import requests
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
 from loguru import logger
 
-
-save_img_file = "earth.png"
+save_img_file = "$HOME/blueearth/"
 proportion = 1.78         # width / heith
 zoom_level = 4            # image zoom level of himawari8 , curent supported: 1, 2, 4, 8, ..., 20(MAX)
+logger.remove()
+handler = logger.add(sys.stderr, level="ERROR")
 if(len(sys.argv) > 1) and sys.argv[1].startswith("--level"):
     try:
         zoom_level = int(sys.argv[1].split("=")[1])
@@ -42,7 +44,7 @@ if(len(sys.argv) > 1) and sys.argv[1].startswith("--level"):
         pass
             
 png_unit_size = 550                   # per earth fragment size is 550x550
-y_offset = int(png_unit_size / 2.0)   # y offset when we splice the fragments
+y_offset = int(png_unit_size / 0.5)   # y offset when we splice the fragments
 png_height = png_unit_size * zoom_level + 2 * y_offset
 png_width = int(png_height * proportion)
 x_offset = int((png_width - png_unit_size * zoom_level) / 2.0)
@@ -106,6 +108,8 @@ def stitching(urls, zoomlv=zoom_level):
         except Exception as error:
             logger.debug(f"remove tmp file exception: {error}")
 
+    global save_img_file
+    save_img_file = save_img_file + time.strftime("%H-%M-%S.png", time.localtime())
     target.save(save_img_file, quality=100)
 
     
@@ -138,10 +142,27 @@ def get_latest_fragments(zoomlv=zoom_level):
     
     return get_fragments(date, t, zoomlv)
 
+def clean_temp():
+    os.system("rm " + save_img_file + "*.png")
+
+def set_wallpaper():
+    script = """/usr/bin/osascript << END
+                tell application "System Events"
+					set desktopCount to count of desktops
+					repeat with desktopNumber from 1 to desktopCount
+						tell desktop desktopNumber
+							set picture to "%s"
+						end tell
+					end repeat
+				end tell
+END"""
+    os.system(script%save_img_file)
 
 def main():
+    clean_temp()
     urls = get_latest_fragments(zoom_level)
     stitching(urls)
+    set_wallpaper()
     logger.info("done")
 
 
