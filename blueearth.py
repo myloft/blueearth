@@ -31,7 +31,7 @@ from concurrent.futures import ThreadPoolExecutor
 from PIL import Image
 from loguru import logger
 
-save_img_file = "$HOME/blueearth/"
+save_img_file = os.path.dirname(os.path.abspath(__file__)) + "/"
 proportion = 1.78         # width / heith
 zoom_level = 4            # image zoom level of himawari8 , curent supported: 1, 2, 4, 8, ..., 20(MAX)
 logger.remove()
@@ -66,7 +66,7 @@ def safe_urlopen(url):
 
 def download(url):
     res = safe_urlopen(url)
-    with open(os.path.basename(url), "wb") as fp:
+    with open(save_img_file + os.path.basename(url), "wb") as fp:
         fp.write(res.content)
         
     logger.info("success    %s" % os.path.basename(url))
@@ -78,9 +78,10 @@ def update_pilimage_list(datalist, fpath):
 
 
 def stitching(urls, zoomlv=zoom_level):
+    global save_img_file
     datalist, index = [], 0
     for url in urls:
-        fpath = os.path.basename(url)
+        fpath = save_img_file + os.path.basename(url)
         try:
             update_pilimage_list(datalist, fpath)
         except IOError as error:
@@ -108,7 +109,6 @@ def stitching(urls, zoomlv=zoom_level):
         except Exception as error:
             logger.debug(f"remove tmp file exception: {error}")
 
-    global save_img_file
     save_img_file = save_img_file + time.strftime("%H-%M-%S.png", time.localtime())
     target.save(save_img_file, quality=100)
 
@@ -143,7 +143,7 @@ def get_latest_fragments(zoomlv=zoom_level):
     return get_fragments(date, t, zoomlv)
 
 def clean_temp():
-    os.system("rm " + save_img_file + "*.png")
+    os.system("rm %s*.png > /dev/null"%save_img_file)
 
 def set_wallpaper():
     script = """/usr/bin/osascript << END
